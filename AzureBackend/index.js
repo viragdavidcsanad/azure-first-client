@@ -1,6 +1,8 @@
 const express = require("express");
 const app = express();
 const port = process.env.PORT || 8035;
+const cors = require("cors");
+app.use(cors());
 app.listen(port, () => {
   console.log("The server is running on port " + port);
 });
@@ -30,23 +32,39 @@ app.get("/about", (req, _res) => {
   console.log("Requesting the about page", req.url);
 });
 
-const Feature = new mongoose.Schema({
-  feature: {
-    type: String,
-    required: true,
+const FeatureSchema = new mongoose.Schema([
+  {
+    id: {
+      type: Number,
+      required: true,
+    },
   },
-  version: {
-    type: String,
-    required: true,
+  {
+    feature: {
+      type: String,
+      required: true,
+    },
   },
-  year: {
-    type: Number,
-    required: true,
+  {
+    version: {
+      type: String,
+      required: true,
+    },
   },
-});
+  {
+    year: {
+      type: Number,
+      required: true,
+    },
+  },
+]);
+const FeatureModel = mongoose.model("FeatureModel", FeatureSchema);
+let nextId = 0;
 
 app.post("/api/features/new", async (req, res) => {
-  const feature = new Feature({
+  nextId += 1;
+  const feature = new FeatureModel({
+    id: nextId,
     feature: req.body.feature,
     version: req.body.version,
     year: req.body.year,
@@ -58,7 +76,9 @@ app.post("/api/features/new", async (req, res) => {
     res.json({ error });
   }
 });
-app.get("/api/features", async (req, res) => {
-  const features = await Feature.find();
-  res.json(features);
-})
+app.get("/api/features", async (_req, res) => {
+  const features = await FeatureModel.find();
+  if (features.length === 0) {
+    res.json({ error: "No features found" });
+  } else res.json(features);
+});
