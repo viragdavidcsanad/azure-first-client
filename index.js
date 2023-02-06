@@ -1,8 +1,8 @@
-const link = "https://first-azure-project.azurewebsites.net/api/features";
+const link = "http://localhost:8035/api/features";
 const $jsContent = document.querySelector(".js_content");
 
-//
-// http://localhost:8901/api/features
+// https://first-azure-project.azurewebsites.net/api/features
+// 
 
 fetch(link)
   .then((data) => data.json())
