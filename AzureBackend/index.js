@@ -1,77 +1,64 @@
-var express = require("express");
-var cors = require("cors");
-var app = express();
-var port = process.env.PORT || 8901;
-var sqlite3 = require("sqlite3");
-var db = new sqlite3.Database("myDatabase.db");
+const express = require("express");
+const app = express();
+const port = process.env.PORT || 8035;
 app.listen(port, () => {
-  console.log("The server started on port", port);
+  console.log("The server is running on port " + port);
 });
-// middlewares
-app.use(cors());
-app.use(express.static("public"));
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
 
-setDatabase = () => {
-  db.run(`CREATE TABLE IF NOT EXISTS Features (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    feature TEXT NOT NULL,
-    version TEXT NOT NULL,
-    year INTEGER NOT NULL 
-  )`);
-  // db.run(`
-  //   INSERT INTO Features (feature, version, year)
-  //   VALUES ("Spread operator", "ES6", 2015),
-  //          ("power operator", "ES7", 2016),
-  //          ("async-await", "ES8", 2018);
-  // `);
+const mongoose = require("mongoose");
+const { username, password } = require("./mongo-login.js");
+const connectionString = `mongodb+srv://${username}:${password}@cluster0.aisjwrg.mongodb.net/?retryWrites=true&w=majority`;
+const connectionCallback = () => {
+  console.log("Connected to MongoDB");
 };
+mongoose.set("strictQuery", false);
+mongoose
+  .connect(connectionString)
+  .then(connectionCallback)
+  .catch((err) => {
+    console.log(err);
+  });
 
-db.serialize(setDatabase);
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static("public"));
 
-app.get("/api/features", (req, res) => {
-  console.log("Requsted all features", req.url);
-  const getFeatures = (error, features) => {
-    if (error) {
-      res.send({ error: "Error: " + error.message, error });
-    } else {
-      res.send(features);
-    }
-  };
-  db.all(`SELECT * FROM Features`, getFeatures);
+app.get("/", (req, _res) => {
+  console.log("Requesting the main page", req.url);
+});
+app.get("/about", (req, _res) => {
+  console.log("Requesting the about page", req.url);
 });
 
-app.get("/api/features/:id", (req, res) => {
-  const id = Number.parseInt(req.params.id);
-  console.log("Requested feature:", id);
-  const getFeature = (error, feature) => {
-    if (error) {
-      res.send({ error: "Error: " + error.message, error });
-    } else {
-      res.send(feature);
-    }
-  };
-  db.all(`SELECT * FROM Features WHERE id = ?`, [id], getFeature);
+const Feature = new mongoose.Schema({
+  feature: {
+    type: String,
+    required: true,
+  },
+  version: {
+    type: String,
+    required: true,
+  },
+  year: {
+    type: Number,
+    required: true,
+  },
 });
 
-app.post("/api/features/new", (req, res) => {
-  db.run(
-    `INSERT INTO Features (feature, version, year)
-     VALUES (?, ?, ?)`,
-    [req.body.feature, req.body.version, req.body.year]
-  );
-  console.log("Data succesfully inserted:", [
-    req.body.feature,
-    req.body.version,
-    req.body.year,
-  ]);
-  const getFeatures = (error, features) => {
-    if (error) {
-      res.send({ error: "Error: " + error.send, error });
-    } else {
-      res.send(features);
-    }
-  };
-  db.all(`SELECT * FROM Features`, getFeatures);
+app.post("/api/features/new", async (req, res) => {
+  const feature = new Feature({
+    feature: req.body.feature,
+    version: req.body.version,
+    year: req.body.year,
+  });
+  try {
+    const response = await feature.save();
+    res.json(response);
+  } catch (error) {
+    res.json({ error });
+  }
 });
+app.get("/api/features", async (req, res) => {
+  const features = await Feature.find();
+  res.json(features);
+})
